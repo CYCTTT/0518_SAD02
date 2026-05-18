@@ -1,0 +1,1987 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PETVERSE GALAXY — 寵物星際交流平台</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Exo+2:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --neon-blue: #00d4ff;
+  --neon-cyan: #00fff7;
+  --plasma-purple: #b000ff;
+  --neon-pink: #ff00a8;
+  --dark-bg: #02040a;
+  --dark-card: rgba(5, 15, 30, 0.85);
+  --dark-panel: rgba(0, 20, 45, 0.7);
+  --border-glow: rgba(0, 212, 255, 0.4);
+  --text-primary: #e0f4ff;
+  --text-secondary: #7ab8cc;
+  --text-dim: #3a6070;
+  --success: #00ff88;
+  --warning: #ffaa00;
+  --danger: #ff3060;
+  --glass: rgba(0, 180, 255, 0.05);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  font-family: 'Exo 2', sans-serif;
+  background: var(--dark-bg);
+  color: var(--text-primary);
+  overflow-x: hidden;
+  cursor: default;
+}
+
+/* ─── CANVAS BACKGROUND ─── */
+#bgCanvas {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* ─── SCANLINE OVERLAY ─── */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 212, 255, 0.015) 2px,
+    rgba(0, 212, 255, 0.015) 4px
+  );
+  pointer-events: none;
+  z-index: 1;
+  animation: scanMove 8s linear infinite;
+}
+@keyframes scanMove {
+  from { background-position: 0 0; }
+  to { background-position: 0 100px; }
+}
+
+/* ─── MAIN WRAPPER ─── */
+#app {
+  position: relative;
+  z-index: 2;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ─── NAVBAR ─── */
+#navbar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  padding: 0 2rem;
+  height: 64px;
+  background: rgba(2, 4, 10, 0.95);
+  border-bottom: 1px solid var(--border-glow);
+  box-shadow: 0 0 30px rgba(0, 212, 255, 0.1);
+  backdrop-filter: blur(20px);
+}
+
+.nav-logo {
+  font-family: 'Orbitron', monospace;
+  font-size: 1.1rem;
+  font-weight: 900;
+  color: var(--neon-cyan);
+  text-shadow: 0 0 20px var(--neon-cyan), 0 0 40px rgba(0,255,247,0.3);
+  letter-spacing: 0.15em;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+}
+
+.nav-logo span { font-size: 1.4rem; }
+
+.nav-links {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.nav-btn {
+  font-family: 'Exo 2', sans-serif;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  padding: 0.4rem 1rem;
+  border: 1px solid rgba(0, 212, 255, 0.3);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.3s;
+  text-transform: uppercase;
+  position: relative;
+  overflow: hidden;
+}
+
+.nav-btn::before {
+  content: '';
+  position: absolute;
+  top: 0; left: -100%;
+  width: 100%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(0,212,255,0.15), transparent);
+  transition: left 0.5s;
+}
+
+.nav-btn:hover::before { left: 100%; }
+
+.nav-btn:hover, .nav-btn.active {
+  border-color: var(--neon-blue);
+  color: var(--neon-cyan);
+  box-shadow: 0 0 15px rgba(0,212,255,0.3), inset 0 0 15px rgba(0,212,255,0.05);
+  text-shadow: 0 0 8px var(--neon-cyan);
+}
+
+.nav-btn.logout-btn {
+  border-color: rgba(255, 48, 96, 0.4);
+  color: rgba(255, 100, 130, 0.8);
+}
+.nav-btn.logout-btn:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+  box-shadow: 0 0 15px rgba(255,48,96,0.3);
+  text-shadow: 0 0 8px var(--danger);
+}
+
+.nav-avatar {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  border: 2px solid var(--neon-blue);
+  box-shadow: 0 0 12px rgba(0,212,255,0.5);
+  object-fit: cover;
+  margin-left: 0.8rem;
+}
+
+.nav-avatar-placeholder {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  border: 2px solid var(--neon-blue);
+  box-shadow: 0 0 12px rgba(0,212,255,0.5);
+  background: linear-gradient(135deg, var(--plasma-purple), var(--neon-blue));
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.9rem;
+  margin-left: 0.8rem;
+  font-family: 'Orbitron', monospace;
+  font-weight: 700;
+}
+
+/* ─── PAGES ─── */
+.page {
+  display: none;
+  flex: 1;
+  animation: fadeIn 0.4s ease;
+}
+.page.active { display: block; }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── AUTH PAGE ─── */
+#authPage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100vh - 64px);
+  padding: 2rem;
+}
+
+.auth-container {
+  width: 100%;
+  max-width: 480px;
+}
+
+.auth-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.auth-title {
+  font-family: 'Orbitron', monospace;
+  font-size: 1.8rem;
+  font-weight: 900;
+  color: var(--neon-cyan);
+  text-shadow: 0 0 30px var(--neon-cyan), 0 0 60px rgba(0,255,247,0.2);
+  letter-spacing: 0.1em;
+  margin-bottom: 0.3rem;
+}
+
+.auth-subtitle {
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+.auth-tabs {
+  display: flex;
+  border: 1px solid rgba(0,212,255,0.2);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 0;
+}
+
+.auth-tab {
+  flex: 1;
+  padding: 0.75rem;
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  font-family: 'Exo 2', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.auth-tab.active {
+  background: rgba(0, 212, 255, 0.1);
+  color: var(--neon-cyan);
+  box-shadow: inset 0 -2px 0 var(--neon-blue);
+}
+
+.auth-tab:hover:not(.active) {
+  background: rgba(0, 212, 255, 0.05);
+  color: var(--text-secondary);
+}
+
+.auth-form {
+  display: none;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.5rem;
+  background: var(--dark-card);
+  border: 1px solid rgba(0,212,255,0.2);
+  border-top: none;
+  backdrop-filter: blur(20px);
+}
+
+.auth-form.active { display: flex; }
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.form-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--neon-blue);
+}
+
+.form-input {
+  background: rgba(0, 30, 60, 0.5);
+  border: 1px solid rgba(0, 212, 255, 0.2);
+  color: var(--text-primary);
+  padding: 0.7rem 1rem;
+  font-family: 'Exo 2', sans-serif;
+  font-size: 0.9rem;
+  outline: none;
+  transition: all 0.3s;
+}
+
+.form-input:focus {
+  border-color: var(--neon-blue);
+  box-shadow: 0 0 15px rgba(0,212,255,0.2), inset 0 0 10px rgba(0,212,255,0.05);
+}
+
+.form-input::placeholder { color: var(--text-dim); }
+
+.avatar-upload-area {
+  border: 1px dashed rgba(0, 212, 255, 0.3);
+  padding: 1.5rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s;
+  position: relative;
+  overflow: hidden;
+}
+
+.avatar-upload-area:hover {
+  border-color: var(--neon-blue);
+  background: rgba(0, 212, 255, 0.05);
+}
+
+.avatar-preview {
+  width: 80px; height: 80px;
+  border-radius: 50%;
+  border: 2px solid var(--neon-blue);
+  box-shadow: 0 0 20px rgba(0,212,255,0.4);
+  object-fit: cover;
+  margin: 0 auto 0.5rem;
+  display: none;
+}
+
+.avatar-upload-text {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  letter-spacing: 0.05em;
+}
+
+.avatar-upload-icon {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+}
+
+input[type="file"] { display: none; }
+
+/* ─── BUTTONS ─── */
+.btn-primary {
+  font-family: 'Orbitron', monospace;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  padding: 0.85rem 2rem;
+  background: linear-gradient(135deg, rgba(0,212,255,0.15), rgba(176,0,255,0.1));
+  border: 1px solid var(--neon-blue);
+  color: var(--neon-cyan);
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s;
+}
+
+.btn-primary::before {
+  content: '';
+  position: absolute;
+  top: 0; left: -100%;
+  width: 100%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(0,212,255,0.3), transparent);
+  transition: left 0.6s;
+}
+
+.btn-primary:hover::before { left: 100%; }
+
+.btn-primary:hover {
+  box-shadow: 0 0 30px rgba(0,212,255,0.4), 0 0 60px rgba(0,212,255,0.15);
+  text-shadow: 0 0 10px var(--neon-cyan);
+  transform: translateY(-1px);
+}
+
+.btn-primary:active { transform: translateY(0); }
+
+.btn-secondary {
+  font-family: 'Exo 2', sans-serif;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.7rem 1.5rem;
+  background: transparent;
+  border: 1px solid rgba(0,212,255,0.3);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.btn-secondary:hover {
+  border-color: var(--neon-blue);
+  color: var(--neon-cyan);
+  box-shadow: 0 0 15px rgba(0,212,255,0.2);
+}
+
+.btn-danger {
+  border-color: rgba(255,48,96,0.4) !important;
+  color: var(--danger) !important;
+}
+.btn-danger:hover {
+  box-shadow: 0 0 15px rgba(255,48,96,0.3) !important;
+  border-color: var(--danger) !important;
+}
+
+.alert-box {
+  padding: 0.7rem 1rem;
+  font-size: 0.85rem;
+  border-left: 3px solid;
+}
+
+.alert-success {
+  border-color: var(--success);
+  background: rgba(0, 255, 136, 0.08);
+  color: var(--success);
+}
+
+.alert-error {
+  border-color: var(--danger);
+  background: rgba(255, 48, 96, 0.08);
+  color: var(--danger);
+}
+
+/* ─── HOME PAGE ─── */
+#homePage { padding: 2rem; max-width: 900px; margin: 0 auto; }
+
+.profile-banner {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 1.5rem 2rem;
+  background: var(--dark-card);
+  border: 1px solid rgba(0,212,255,0.2);
+  margin-bottom: 2rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.profile-banner::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--neon-cyan), var(--plasma-purple), transparent);
+}
+
+.profile-avatar {
+  width: 80px; height: 80px;
+  border-radius: 50%;
+  border: 3px solid var(--neon-blue);
+  box-shadow: 0 0 25px rgba(0,212,255,0.5), 0 0 50px rgba(0,212,255,0.15);
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.profile-avatar-placeholder {
+  width: 80px; height: 80px;
+  border-radius: 50%;
+  border: 3px solid var(--neon-blue);
+  box-shadow: 0 0 25px rgba(0,212,255,0.5);
+  background: linear-gradient(135deg, var(--plasma-purple), var(--neon-blue));
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.8rem;
+  font-family: 'Orbitron', monospace;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.profile-info { flex: 1; }
+
+.profile-name {
+  font-family: 'Orbitron', monospace;
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--neon-cyan);
+  text-shadow: 0 0 15px rgba(0,255,247,0.4);
+  margin-bottom: 0.2rem;
+}
+
+.profile-id {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.profile-stats {
+  display: flex;
+  gap: 2rem;
+}
+
+.stat-item { text-align: center; }
+
+.stat-num {
+  font-family: 'Orbitron', monospace;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--neon-blue);
+  display: block;
+}
+
+.stat-label {
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+}
+
+.section-title {
+  font-family: 'Orbitron', monospace;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--neon-blue);
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.section-title::before {
+  content: '';
+  display: inline-block;
+  width: 4px; height: 16px;
+  background: linear-gradient(var(--neon-cyan), var(--plasma-purple));
+}
+
+.btn-new-post {
+  font-family: 'Orbitron', monospace;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  padding: 0.65rem 1.5rem;
+  background: linear-gradient(135deg, rgba(0,255,247,0.1), rgba(176,0,255,0.1));
+  border: 1px solid var(--neon-cyan);
+  color: var(--neon-cyan);
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s;
+  text-shadow: 0 0 8px var(--neon-cyan);
+}
+
+.btn-new-post::before {
+  content: '';
+  position: absolute;
+  top: 0; left: -100%;
+  width: 100%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(0,255,247,0.2), transparent);
+  transition: left 0.5s;
+}
+
+.btn-new-post:hover::before { left: 100%; }
+.btn-new-post:hover {
+  box-shadow: 0 0 25px rgba(0,255,247,0.4), 0 0 50px rgba(0,255,247,0.1);
+  transform: translateY(-2px);
+}
+
+/* ─── POST CARDS ─── */
+.posts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1.5rem;
+}
+
+.post-card {
+  background: var(--dark-card);
+  border: 1px solid rgba(0, 212, 255, 0.15);
+  padding: 1.2rem;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s;
+  backdrop-filter: blur(15px);
+}
+
+.post-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--neon-blue), transparent);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.post-card:hover {
+  border-color: rgba(0, 212, 255, 0.4);
+  box-shadow: 0 0 30px rgba(0,212,255,0.12), 0 8px 30px rgba(0,0,0,0.4);
+  transform: translateY(-3px);
+}
+
+.post-card:hover::before { opacity: 1; }
+
+.post-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.post-author-avatar {
+  width: 38px; height: 38px;
+  border-radius: 50%;
+  border: 2px solid var(--neon-blue);
+  box-shadow: 0 0 10px rgba(0,212,255,0.4);
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.post-author-placeholder {
+  width: 38px; height: 38px;
+  border-radius: 50%;
+  border: 2px solid var(--neon-blue);
+  box-shadow: 0 0 10px rgba(0,212,255,0.4);
+  background: linear-gradient(135deg, var(--plasma-purple), var(--neon-blue));
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.8rem;
+  font-family: 'Orbitron', monospace;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.post-author-info { flex: 1; }
+
+.post-author-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.post-author-id {
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  letter-spacing: 0.05em;
+}
+
+.post-time {
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  font-family: 'Orbitron', monospace;
+}
+
+.post-title {
+  font-family: 'Orbitron', monospace;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--neon-cyan);
+  margin-bottom: 0.5rem;
+  line-height: 1.4;
+  text-shadow: 0 0 10px rgba(0,255,247,0.2);
+}
+
+.post-content {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin-bottom: 0.75rem;
+  max-height: 4.8em;
+  overflow: hidden;
+  position: relative;
+  transition: max-height 0.4s ease;
+}
+
+.post-content.expanded { max-height: 1000px; }
+
+.post-content-fade {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 2em;
+  background: linear-gradient(transparent, var(--dark-card));
+}
+
+.post-content.expanded .post-content-fade { display: none; }
+
+.btn-expand {
+  background: none;
+  border: none;
+  color: var(--neon-blue);
+  font-size: 0.75rem;
+  cursor: pointer;
+  padding: 0;
+  margin-bottom: 0.75rem;
+  font-family: 'Exo 2', sans-serif;
+  letter-spacing: 0.05em;
+}
+
+.btn-expand:hover { color: var(--neon-cyan); text-shadow: 0 0 8px var(--neon-cyan); }
+
+.post-image {
+  width: 100%;
+  border-radius: 2px;
+  border: 1px solid rgba(0,212,255,0.15);
+  margin-bottom: 0.75rem;
+  max-height: 250px;
+  object-fit: cover;
+}
+
+.post-actions {
+  display: flex;
+  gap: 1.5rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(0, 212, 255, 0.1);
+}
+
+.action-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-family: 'Exo 2', sans-serif;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.3s;
+  padding: 0.3rem 0.5rem;
+  border-radius: 2px;
+}
+
+.action-btn:hover {
+  color: var(--neon-cyan);
+  background: rgba(0,212,255,0.08);
+  text-shadow: 0 0 8px var(--neon-cyan);
+}
+
+.action-btn.liked {
+  color: var(--neon-pink);
+  text-shadow: 0 0 8px var(--neon-pink);
+}
+
+.action-btn.liked:hover {
+  color: var(--neon-pink);
+  background: rgba(255,0,168,0.08);
+}
+
+.action-icon { font-size: 1.1rem; }
+
+/* ─── COMMENTS SECTION ─── */
+.comments-section {
+  display: none;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(0, 212, 255, 0.1);
+  animation: fadeIn 0.3s ease;
+}
+
+.comments-section.open { display: block; }
+
+.comment-item {
+  display: flex;
+  gap: 0.6rem;
+  margin-bottom: 0.75rem;
+  padding: 0.6rem;
+  background: rgba(0, 30, 60, 0.4);
+  border-left: 2px solid rgba(0,212,255,0.2);
+}
+
+.comment-avatar {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  border: 1px solid rgba(0,212,255,0.4);
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.comment-placeholder {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  border: 1px solid rgba(0,212,255,0.4);
+  background: linear-gradient(135deg, var(--plasma-purple), var(--neon-blue));
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.65rem;
+  font-family: 'Orbitron', monospace;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.comment-body { flex: 1; }
+
+.comment-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.2rem;
+}
+
+.comment-author {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--neon-blue);
+}
+
+.comment-time {
+  font-size: 0.65rem;
+  color: var(--text-dim);
+  font-family: 'Orbitron', monospace;
+}
+
+.comment-text {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.comment-input-area {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.comment-input {
+  flex: 1;
+  background: rgba(0, 30, 60, 0.5);
+  border: 1px solid rgba(0, 212, 255, 0.2);
+  color: var(--text-primary);
+  padding: 0.5rem 0.8rem;
+  font-family: 'Exo 2', sans-serif;
+  font-size: 0.82rem;
+  outline: none;
+  transition: all 0.3s;
+}
+
+.comment-input:focus {
+  border-color: var(--neon-blue);
+  box-shadow: 0 0 10px rgba(0,212,255,0.15);
+}
+
+.comment-input::placeholder { color: var(--text-dim); }
+
+.btn-comment-submit {
+  padding: 0.5rem 1rem;
+  background: rgba(0,212,255,0.1);
+  border: 1px solid var(--neon-blue);
+  color: var(--neon-cyan);
+  font-family: 'Orbitron', monospace;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  transition: all 0.3s;
+  white-space: nowrap;
+}
+
+.btn-comment-submit:hover {
+  background: rgba(0,212,255,0.2);
+  box-shadow: 0 0 15px rgba(0,212,255,0.3);
+}
+
+.login-prompt {
+  padding: 0.75rem 1rem;
+  background: rgba(176, 0, 255, 0.08);
+  border: 1px solid rgba(176, 0, 255, 0.25);
+  margin-top: 0.75rem;
+  text-align: center;
+}
+
+.login-prompt-text {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.6rem;
+}
+
+.login-prompt-btns {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.btn-prompt {
+  padding: 0.35rem 0.9rem;
+  font-size: 0.75rem;
+  font-family: 'Exo 2', sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  transition: all 0.3s;
+  border: 1px solid rgba(176, 0, 255, 0.4);
+  background: transparent;
+  color: #cc88ff;
+  text-transform: uppercase;
+}
+
+.btn-prompt:hover {
+  border-color: var(--plasma-purple);
+  color: #e0aaff;
+  box-shadow: 0 0 12px rgba(176,0,255,0.3);
+}
+
+/* ─── COMPOSE PAGE ─── */
+#composePage { padding: 2rem; max-width: 700px; margin: 0 auto; }
+
+.compose-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(0,212,255,0.15);
+}
+
+.compose-title {
+  font-family: 'Orbitron', monospace;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--neon-cyan);
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  text-shadow: 0 0 15px rgba(0,255,247,0.3);
+}
+
+.compose-user {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1.5rem;
+  background: rgba(0, 30, 60, 0.5);
+  border: 1px solid rgba(0,212,255,0.15);
+  margin-bottom: 1.5rem;
+}
+
+.compose-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+}
+
+.image-upload-area {
+  border: 1px dashed rgba(0, 212, 255, 0.3);
+  padding: 2rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s;
+  position: relative;
+}
+
+.image-upload-area:hover {
+  border-color: var(--neon-blue);
+  background: rgba(0, 212, 255, 0.03);
+}
+
+.image-preview-container {
+  position: relative;
+  display: none;
+}
+
+.image-preview {
+  width: 100%;
+  max-height: 300px;
+  object-fit: contain;
+  border: 1px solid rgba(0,212,255,0.2);
+}
+
+.btn-remove-image {
+  position: absolute;
+  top: 0.5rem; right: 0.5rem;
+  background: rgba(255,48,96,0.8);
+  border: none;
+  color: white;
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 1rem;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.3s;
+}
+
+.btn-remove-image:hover { background: var(--danger); box-shadow: 0 0 10px rgba(255,48,96,0.5); }
+
+/* ─── GALAXY/SHARE PAGE ─── */
+#galaxyPage { padding: 2rem; max-width: 900px; margin: 0 auto; }
+
+.galaxy-header {
+  text-align: center;
+  margin-bottom: 2.5rem;
+  position: relative;
+}
+
+.galaxy-title {
+  font-family: 'Orbitron', monospace;
+  font-size: 1.5rem;
+  font-weight: 900;
+  color: var(--neon-cyan);
+  text-shadow: 0 0 30px var(--neon-cyan), 0 0 60px rgba(0,255,247,0.2);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  margin-bottom: 0.3rem;
+}
+
+.galaxy-subtitle {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.galaxy-divider {
+  width: 200px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--neon-cyan), transparent);
+  margin: 1rem auto 0;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 4rem 2rem;
+  color: var(--text-dim);
+}
+
+.empty-icon { font-size: 4rem; margin-bottom: 1rem; }
+
+.empty-text {
+  font-family: 'Orbitron', monospace;
+  font-size: 0.9rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* ─── MODAL ─── */
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.85);
+  z-index: 1000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(8px);
+  animation: fadeIn 0.2s ease;
+}
+
+.modal-overlay.open { display: flex; }
+
+.modal-box {
+  background: rgba(2, 10, 25, 0.98);
+  border: 1px solid var(--neon-blue);
+  box-shadow: 0 0 60px rgba(0,212,255,0.25), 0 0 120px rgba(0,212,255,0.08);
+  padding: 2rem;
+  max-width: 400px;
+  width: 90%;
+  position: relative;
+  animation: modalIn 0.3s ease;
+}
+
+@keyframes modalIn {
+  from { transform: scale(0.9); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.modal-box::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--neon-cyan), var(--plasma-purple), transparent);
+}
+
+.modal-title {
+  font-family: 'Orbitron', monospace;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--neon-cyan);
+  margin-bottom: 0.75rem;
+  text-shadow: 0 0 15px rgba(0,255,247,0.3);
+}
+
+.modal-text {
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+  margin-bottom: 1.5rem;
+  line-height: 1.6;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}
+
+/* ─── FOOTER ─── */
+footer {
+  text-align: center;
+  padding: 1.5rem;
+  font-family: 'Orbitron', monospace;
+  font-size: 0.65rem;
+  color: var(--text-dim);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  border-top: 1px solid rgba(0, 212, 255, 0.08);
+}
+
+/* ─── UTILITY ─── */
+.no-posts {
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  text-align: center;
+  padding: 2rem;
+  letter-spacing: 0.05em;
+}
+
+.hud-corner {
+  position: absolute;
+  width: 12px; height: 12px;
+  border-color: var(--neon-blue);
+  border-style: solid;
+  opacity: 0.6;
+}
+.hud-tl { top: 0; left: 0; border-width: 1px 0 0 1px; }
+.hud-tr { top: 0; right: 0; border-width: 1px 1px 0 0; }
+.hud-bl { bottom: 0; left: 0; border-width: 0 0 1px 1px; }
+.hud-br { bottom: 0; right: 0; border-width: 0 1px 1px 0; }
+
+textarea.form-input {
+  resize: vertical;
+  min-height: 120px;
+}
+
+@media (max-width: 600px) {
+  #navbar { padding: 0 1rem; }
+  .nav-logo { font-size: 0.85rem; }
+  #homePage, #galaxyPage, #composePage { padding: 1rem; }
+  .posts-grid { grid-template-columns: 1fr; }
+  .profile-stats { display: none; }
+}
+</style>
+</head>
+<body>
+
+<canvas id="bgCanvas"></canvas>
+
+<div id="app">
+  <!-- NAVBAR -->
+  <nav id="navbar">
+    <div class="nav-logo"><span>🐾</span> PETVERSE <span style="color:var(--plasma-purple);font-size:0.8rem;opacity:0.7">GALAXY</span></div>
+    <div class="nav-links" id="navLinks">
+      <button class="nav-btn" onclick="showPage('galaxy')" id="navGalaxy">星際分享區</button>
+      <button class="nav-btn" onclick="viewMyProfile()" id="navHome" style="display:none">個人首頁</button>
+      <button class="nav-btn logout-btn" onclick="logout()" id="navLogout" style="display:none">登出</button>
+      <button class="nav-btn" onclick="showPage('auth')" id="navLogin" style="display:none">登入 / 註冊</button>
+      <div id="navAvatarWrap"></div>
+    </div>
+  </nav>
+
+  <!-- AUTH PAGE -->
+  <div id="authPage" class="page active">
+    <div class="auth-container">
+      <div class="auth-header">
+        <div class="auth-title">PETVERSE</div>
+        <div class="auth-subtitle">Galaxy Pet Community · Est. 2077</div>
+      </div>
+      <div class="auth-tabs">
+        <button class="auth-tab active" onclick="switchAuthTab('login')" id="loginTab">登入</button>
+        <button class="auth-tab" onclick="switchAuthTab('register')" id="registerTab">註冊</button>
+      </div>
+      <!-- LOGIN FORM -->
+      <div id="loginForm" class="auth-form active">
+        <div class="form-group">
+          <label class="form-label">使用者 ID</label>
+          <input class="form-input" type="text" id="loginId" placeholder="輸入你的星際 ID">
+        </div>
+        <div class="form-group">
+          <label class="form-label">密碼</label>
+          <input class="form-input" type="password" id="loginPwd" placeholder="輸入密碼">
+        </div>
+        <div id="loginAlert"></div>
+        <button class="btn-primary" onclick="doLogin()">▶ 進入系統</button>
+      </div>
+      <!-- CAPTCHA FORM -->
+      <div id="loginCaptchaForm" class="auth-form">
+        <div style="font-family:'Orbitron',monospace; font-size:1rem; color:var(--text-primary); text-align:center; margin-bottom:1rem; font-weight:700;">
+          請選取所有包含吉娃娃的圖片
+        </div>
+        <div id="captchaGrid" style="display:grid; grid-template-columns:repeat(4, 1fr); gap:4px; margin-bottom:1rem; width:100%; aspect-ratio:1;">
+        </div>
+        <div id="captchaAlert"></div>
+        <div style="display:flex; gap:0.5rem;">
+          <button class="btn-secondary" onclick="cancelCaptcha()" style="flex:1; border-color: rgba(255, 170, 0, 0.4); color: #ffaa00;">取消</button>
+          <button class="btn-primary" onclick="verifyCaptcha()" style="flex:2; background: linear-gradient(135deg, rgba(255,100,50,0.15), rgba(255,170,0,0.1)); border-color: #ffaa00; color: #ffaa00;">驗證</button>
+        </div>
+      </div>
+      <!-- REGISTER FORM -->
+      <div id="registerForm" class="auth-form">
+        <div class="form-group">
+          <label class="form-label">使用者 ID（唯一識別碼）</label>
+          <input class="form-input" type="text" id="regId" placeholder="設定你的星際 ID">
+        </div>
+        <div class="form-group">
+          <label class="form-label">暱稱</label>
+          <input class="form-input" type="text" id="regName" placeholder="你的顯示名稱">
+        </div>
+        <div class="form-group">
+          <label class="form-label">密碼</label>
+          <input class="form-input" type="password" id="regPwd" placeholder="設定密碼">
+        </div>
+        <div class="form-group">
+          <label class="form-label">頭像（選填）</label>
+          <div class="avatar-upload-area" onclick="document.getElementById('avatarFile').click()">
+            <img id="avatarPreview" class="avatar-preview" src="" alt="">
+            <div id="avatarUploadContent">
+              <div class="avatar-upload-icon">👾</div>
+              <div class="avatar-upload-text">點擊上傳頭貼<br><span style="color:var(--text-dim);font-size:0.7rem">支援 JPG / PNG</span></div>
+            </div>
+          </div>
+          <input type="file" id="avatarFile" accept="image/*" onchange="previewAvatar(event)">
+        </div>
+        <div id="registerAlert"></div>
+        <button class="btn-primary" onclick="doRegister()">▶ 建立帳號</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- HOME PAGE -->
+  <div id="homePage" class="page">
+    <div class="profile-banner" id="profileBanner">
+      <div class="hud-corner hud-tl"></div>
+      <div class="hud-corner hud-tr"></div>
+      <div class="hud-corner hud-bl"></div>
+      <div class="hud-corner hud-br"></div>
+      <div id="profileAvatarWrap"></div>
+      <div class="profile-info">
+        <div class="profile-name" id="profileName">—</div>
+        <div class="profile-id" id="profileIdLabel">ID: —</div>
+      </div>
+      <div class="profile-stats">
+        <div class="stat-item">
+          <span class="stat-num" id="postCount">0</span>
+          <span class="stat-label">貼文</span>
+        </div>
+      </div>
+    </div>
+    <div class="section-header">
+      <div class="section-title">我的星際貼文</div>
+      <button class="btn-new-post" onclick="startNewPost()">＋ 新增貼文</button>
+    </div>
+    <div class="posts-grid" id="myPostsGrid"></div>
+  </div>
+
+  <!-- COMPOSE PAGE -->
+  <div id="composePage" class="page">
+    <div class="compose-header">
+      <button class="btn-secondary" onclick="showPage('home')" style="padding:0.4rem 0.8rem;font-size:0.75rem">◀ 返回</button>
+      <div class="compose-title">發布星際貼文</div>
+    </div>
+    <div class="compose-user" id="composeUserInfo"></div>
+    <div class="compose-form">
+      <div class="form-group">
+        <label class="form-label">發布主題 *</label>
+        <input class="form-input" type="text" id="postTitle" placeholder="你的貼文主題...">
+      </div>
+      <div class="form-group">
+        <label class="form-label">發布內容 *</label>
+        <textarea class="form-input" id="postContent" placeholder="分享你和寵物的故事..."></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">上傳圖片（選填）</label>
+        <div class="image-upload-area" id="imageUploadArea" onclick="document.getElementById('postImage').click()">
+          <div id="imageUploadPlaceholder">
+            <div style="font-size:2.5rem;margin-bottom:0.5rem">🛸</div>
+            <div style="font-size:0.85rem;color:var(--text-dim)">點擊上傳照片</div>
+          </div>
+          <div class="image-preview-container" id="imagePreviewContainer">
+            <img id="imagePreviewEl" class="image-preview" src="" alt="">
+            <button class="btn-remove-image" onclick="removeImage(event)">✕</button>
+          </div>
+        </div>
+        <input type="file" id="postImage" accept="image/*" onchange="previewPostImage(event)">
+      </div>
+      <div id="composeAlert"></div>
+      <div style="display: flex; gap: 1rem;">
+        <button class="btn-secondary btn-danger" id="btnDeletePost" onclick="deletePost()" style="display:none; flex: 1;">🗑️ 刪除貼文</button>
+        <button class="btn-primary" id="btnSubmitPost" onclick="submitPost()" style="flex: 2;">🚀 發布貼文</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- GALAXY PAGE -->
+  <div id="galaxyPage" class="page">
+    <div class="galaxy-header">
+      <div class="galaxy-title">🌌 星際分享區</div>
+      <div class="galaxy-subtitle">All Species Welcome — Sharing Across the Galaxy</div>
+      <div class="galaxy-divider"></div>
+    </div>
+    <div class="posts-grid" id="galaxyPostsGrid"></div>
+  </div>
+
+  <footer>© 2077 PETVERSE GALAXY — All Species Welcome</footer>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal">
+  <div class="modal-box">
+    <div class="modal-box::before"></div>
+    <div class="modal-title" id="modalTitle">提示</div>
+    <div class="modal-text" id="modalText"></div>
+    <div class="modal-actions" id="modalActions"></div>
+  </div>
+</div>
+
+<script>
+// ─── CANVAS PARTICLES ───
+(function() {
+  const canvas = document.getElementById('bgCanvas');
+  const ctx = canvas.getContext('2d');
+  let W, H, particles = [];
+
+  function resize() {
+    W = canvas.width = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+  }
+
+  function createParticle() {
+    return {
+      x: Math.random() * W,
+      y: Math.random() * H,
+      r: Math.random() * 1.5 + 0.3,
+      vx: (Math.random() - 0.5) * 0.3,
+      vy: (Math.random() - 0.5) * 0.3,
+      alpha: Math.random() * 0.6 + 0.1,
+      color: Math.random() > 0.5 ? '0, 212, 255' : Math.random() > 0.5 ? '176, 0, 255' : '0, 255, 247'
+    };
+  }
+
+  resize();
+  for (let i = 0; i < 120; i++) particles.push(createParticle());
+  window.addEventListener('resize', resize);
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    // grid lines
+    ctx.strokeStyle = 'rgba(0, 212, 255, 0.03)';
+    ctx.lineWidth = 1;
+    for (let x = 0; x < W; x += 80) {
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+    }
+    for (let y = 0; y < H; y += 80) {
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+    }
+    // particles
+    particles.forEach(p => {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(${p.color}, ${p.alpha})`;
+      ctx.fill();
+      // glow
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r * 3, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(${p.color}, ${p.alpha * 0.15})`;
+      ctx.fill();
+
+      p.x += p.vx; p.y += p.vy;
+      if (p.x < 0) p.x = W;
+      if (p.x > W) p.x = 0;
+      if (p.y < 0) p.y = H;
+      if (p.y > H) p.y = 0;
+    });
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+// ─── DATA HELPERS ───
+function getUsers() { return JSON.parse(localStorage.getItem('pv_users') || '[]'); }
+function saveUsers(u) { localStorage.setItem('pv_users', JSON.stringify(u)); }
+function getPosts() { return JSON.parse(localStorage.getItem('pv_posts') || '[]'); }
+function savePosts(p) { localStorage.setItem('pv_posts', JSON.stringify(p)); }
+function getCurrentUser() { return JSON.parse(sessionStorage.getItem('pv_current') || 'null'); }
+function setCurrentUser(u) { sessionStorage.setItem('pv_current', JSON.stringify(u)); }
+
+// ─── FORMAT TIME ───
+function formatTime(ts) {
+  const d = new Date(ts);
+  const now = new Date();
+  const diff = Math.floor((now - d) / 1000);
+  if (diff < 60) return '剛剛';
+  if (diff < 3600) return `${Math.floor(diff/60)} 分前`;
+  if (diff < 86400) return `${Math.floor(diff/3600)} 時前`;
+  return `${d.getMonth()+1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+
+// ─── AVATAR HELPER ───
+function avatarEl(src, name, size = 38) {
+  if (src) {
+    return `<img src="${src}" style="width:${size}px;height:${size}px;border-radius:50%;border:2px solid var(--neon-blue);box-shadow:0 0 10px rgba(0,212,255,0.4);object-fit:cover;flex-shrink:0;" alt="">`;
+  }
+  const initial = (name||'?')[0].toUpperCase();
+  return `<div style="width:${size}px;height:${size}px;border-radius:50%;border:2px solid var(--neon-blue);box-shadow:0 0 10px rgba(0,212,255,0.4);background:linear-gradient(135deg,var(--plasma-purple),var(--neon-blue));display:flex;align-items:center;justify-content:center;font-size:${size*0.4}px;font-family:'Orbitron',monospace;font-weight:700;flex-shrink:0;">${initial}</div>`;
+}
+
+// ─── PAGE NAVIGATION ───
+let currentPage = 'auth';
+let viewingUserId = null;
+
+function viewProfile(userId) {
+  viewingUserId = userId;
+  showPage('home');
+}
+
+function viewMyProfile() {
+  viewingUserId = null;
+  showPage('home');
+}
+
+function showPage(page) {
+  const cu = getCurrentUser();
+  if ((page === 'compose' || (page === 'home' && !viewingUserId)) && !cu) { showPage('auth'); return; }
+
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('authPage').style.display = 'none';
+  document.getElementById('homePage').style.display = 'none';
+  document.getElementById('galaxyPage').style.display = 'none';
+  document.getElementById('composePage').style.display = 'none';
+
+  const pageMap = { auth: 'authPage', home: 'homePage', galaxy: 'galaxyPage', compose: 'composePage' };
+  const el = document.getElementById(pageMap[page]);
+  el.style.display = page === 'auth' ? 'flex' : 'block';
+  el.classList.add('active');
+  currentPage = page;
+
+  // NAV VISIBILITY
+  const navHome = document.getElementById('navHome');
+  const navLogout = document.getElementById('navLogout');
+  const navGalaxy = document.getElementById('navGalaxy');
+  const navLogin = document.getElementById('navLogin');
+  if (cu) {
+    navHome.style.display = 'inline-block';
+    navLogout.style.display = 'inline-block';
+    if (navLogin) navLogin.style.display = 'none';
+  } else {
+    navHome.style.display = 'none';
+    navLogout.style.display = 'none';
+    if (navLogin) navLogin.style.display = 'inline-block';
+  }
+
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  if (page === 'home') navHome.classList.add('active');
+  if (page === 'galaxy') navGalaxy.classList.add('active');
+
+  if (page === 'home') renderHome();
+  if (page === 'galaxy') renderGalaxy();
+  if (page === 'compose') renderCompose();
+}
+
+// ─── NAVBAR AVATAR ───
+function updateNavAvatar() {
+  const cu = getCurrentUser();
+  const wrap = document.getElementById('navAvatarWrap');
+  if (cu) {
+    if (cu.avatar) {
+      wrap.innerHTML = `<img src="${cu.avatar}" class="nav-avatar" alt="">`;
+    } else {
+      const init = (cu.nickname||cu.id||'?')[0].toUpperCase();
+      wrap.innerHTML = `<div class="nav-avatar-placeholder">${init}</div>`;
+    }
+  } else {
+    wrap.innerHTML = '';
+  }
+}
+
+// ─── AUTH ───
+function switchAuthTab(tab) {
+  document.getElementById('loginTab').classList.toggle('active', tab === 'login');
+  document.getElementById('registerTab').classList.toggle('active', tab === 'register');
+  document.getElementById('loginForm').classList.toggle('active', tab === 'login');
+  document.getElementById('registerForm').classList.toggle('active', tab === 'register');
+  if (document.getElementById('loginCaptchaForm')) {
+    document.getElementById('loginCaptchaForm').classList.remove('active');
+  }
+}
+
+let avatarBase64 = '';
+
+function previewAvatar(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    avatarBase64 = ev.target.result;
+    const preview = document.getElementById('avatarPreview');
+    preview.src = avatarBase64;
+    preview.style.display = 'block';
+    document.getElementById('avatarUploadContent').style.display = 'none';
+  };
+  reader.readAsDataURL(file);
+}
+
+function showAlert(id, msg, type) {
+  const el = document.getElementById(id);
+  el.innerHTML = `<div class="alert-box alert-${type}">${msg}</div>`;
+  setTimeout(() => { el.innerHTML = ''; }, 4000);
+}
+
+function doRegister() {
+  const id = document.getElementById('regId').value.trim();
+  const name = document.getElementById('regName').value.trim();
+  const pwd = document.getElementById('regPwd').value;
+  if (!id || !name || !pwd) return showAlert('registerAlert', '請填寫所有必填欄位', 'error');
+  const users = getUsers();
+  if (users.find(u => u.id === id)) return showAlert('registerAlert', 'ID 已被使用，請選擇其他 ID', 'error');
+  users.push({ id, nickname: name, password: pwd, avatar: avatarBase64, joinedAt: Date.now() });
+  saveUsers(users);
+  showAlert('registerAlert', '✓ 註冊成功！請登入', 'success');
+  setTimeout(() => switchAuthTab('login'), 1500);
+  document.getElementById('regId').value = '';
+  document.getElementById('regName').value = '';
+  document.getElementById('regPwd').value = '';
+  avatarBase64 = '';
+  document.getElementById('avatarPreview').style.display = 'none';
+  document.getElementById('avatarUploadContent').style.display = 'block';
+}
+
+function doLogin() {
+  const id = document.getElementById('loginId').value.trim();
+  const pwd = document.getElementById('loginPwd').value;
+  if (!id || !pwd) return showAlert('loginAlert', '請輸入 ID 和密碼', 'error');
+  const users = getUsers();
+  const user = users.find(u => u.id === id && u.password === pwd);
+  if (!user) return showAlert('loginAlert', 'ID 或密碼錯誤', 'error');
+  
+  pendingLoginUser = user;
+  document.getElementById('loginForm').classList.remove('active');
+  document.getElementById('loginCaptchaForm').classList.add('active');
+  initCaptcha();
+}
+
+let captchaSelected = new Set();
+const captchaTargets = [1, 3, 4, 6, 9, 11, 12, 14];
+let pendingLoginUser = null;
+
+function initCaptcha() {
+  captchaSelected.clear();
+  const grid = document.getElementById('captchaGrid');
+  grid.innerHTML = '';
+  document.getElementById('captchaAlert').innerHTML = '';
+  
+  for (let i = 0; i < 16; i++) {
+    const row = Math.floor(i / 4);
+    const col = i % 4;
+    const box = document.createElement('div');
+    
+    // Background positions: 0%, 33.33%, 66.67%, 100%
+    const posX = col * (100 / 3);
+    const posY = row * (100 / 3);
+    
+    box.style.backgroundImage = "url('captcha.jpg')";
+    box.style.backgroundSize = "400% 400%";
+    box.style.backgroundPosition = `${posX}% ${posY}%`;
+    box.style.cursor = "pointer";
+    box.style.borderRadius = "4px";
+    box.style.boxSizing = "border-box";
+    box.style.transition = "all 0.2s ease";
+    
+    box.onclick = () => toggleCaptcha(i, box);
+    grid.appendChild(box);
+  }
+}
+
+function toggleCaptcha(index, boxEl) {
+  if (captchaSelected.has(index)) {
+    captchaSelected.delete(index);
+    boxEl.style.border = "none";
+    boxEl.style.transform = "scale(1)";
+    boxEl.style.opacity = "1";
+  } else {
+    captchaSelected.add(index);
+    boxEl.style.border = "3px solid #ffaa00";
+    boxEl.style.transform = "scale(0.9)";
+    boxEl.style.opacity = "0.8";
+  }
+}
+
+function verifyCaptcha() {
+  const isCorrect = captchaTargets.length === captchaSelected.size && 
+                    captchaTargets.every(t => captchaSelected.has(t));
+                    
+  if (isCorrect) {
+    setCurrentUser(pendingLoginUser);
+    updateNavAvatar();
+    pendingLoginUser = null;
+    showPage('home');
+  } else {
+    showAlert('captchaAlert', '驗證失敗，請再試一次', 'error');
+    initCaptcha(); // Reset
+  }
+}
+
+function cancelCaptcha() {
+  pendingLoginUser = null;
+  document.getElementById('loginCaptchaForm').classList.remove('active');
+  document.getElementById('loginForm').classList.add('active');
+  document.getElementById('loginPwd').value = '';
+}
+
+function logout() {
+  sessionStorage.removeItem('pv_current');
+  updateNavAvatar();
+  showPage('galaxy');
+}
+
+// ─── HOME ───
+function renderHome() {
+  const cu = getCurrentUser();
+  
+  const targetUserId = viewingUserId || (cu ? cu.id : null);
+  if (!targetUserId) { showPage('auth'); return; }
+  
+  const users = getUsers();
+  let targetUser = users.find(u => u.id === targetUserId);
+  if (!targetUser && cu && targetUserId === cu.id) targetUser = cu;
+  if (!targetUser) return;
+  
+  const isMe = cu && (targetUserId === cu.id);
+
+  // profile banner
+  const wrap = document.getElementById('profileAvatarWrap');
+  if (targetUser.avatar) {
+    wrap.innerHTML = `<img src="${targetUser.avatar}" class="profile-avatar" alt="">`;
+  } else {
+    const init = (targetUser.nickname||targetUser.id)[0].toUpperCase();
+    wrap.innerHTML = `<div class="profile-avatar-placeholder">${init}</div>`;
+  }
+  document.getElementById('profileName').textContent = targetUser.nickname;
+  document.getElementById('profileIdLabel').textContent = `ID: ${targetUser.id}`;
+
+  const posts = getPosts().filter(p => p.userId === targetUser.id).reverse();
+  document.getElementById('postCount').textContent = posts.length;
+  
+  const titleEl = document.querySelector('#homePage .section-title');
+  const btnNewPost = document.querySelector('#homePage .btn-new-post');
+  if (isMe) {
+    titleEl.textContent = '我的星際貼文';
+    btnNewPost.style.display = 'inline-block';
+  } else {
+    titleEl.textContent = `${targetUser.nickname} 的星際貼文`;
+    btnNewPost.style.display = 'none';
+  }
+
+  const grid = document.getElementById('myPostsGrid');
+  if (posts.length === 0) {
+    grid.innerHTML = isMe ? '<div class="no-posts">尚未有貼文 — 開始分享你的星際旅程吧！</div>' : '<div class="no-posts">該使用者尚未發布任何貼文</div>';
+  } else {
+    grid.innerHTML = posts.map(p => renderPostCard(p)).join('');
+  }
+}
+
+// ─── COMPOSE ───
+let postImageBase64 = '';
+let editingPostId = null;
+
+function startNewPost() {
+  editingPostId = null;
+  showPage('compose');
+}
+
+function editPost(postId) {
+  editingPostId = postId;
+  showPage('compose');
+}
+
+function renderCompose() {
+  const cu = getCurrentUser();
+  if (!cu) return;
+  const info = document.getElementById('composeUserInfo');
+  info.innerHTML = `${avatarEl(cu.avatar, cu.nickname, 42)}
+    <div>
+      <div style="font-family:'Orbitron',monospace;font-size:0.85rem;color:var(--neon-cyan);">${cu.nickname}</div>
+      <div style="font-size:0.75rem;color:var(--text-dim);letter-spacing:0.05em;">ID: ${cu.id}</div>
+    </div>`;
+    
+  const titleEl = document.querySelector('.compose-title');
+  const btnSubmit = document.getElementById('btnSubmitPost');
+  const btnDelete = document.getElementById('btnDeletePost');
+  
+  if (editingPostId) {
+    const post = getPosts().find(p => p.postId === editingPostId);
+    if (!post) return;
+    titleEl.textContent = '編輯星際貼文';
+    btnSubmit.innerHTML = '💾 儲存修改';
+    btnDelete.style.display = 'block';
+    document.getElementById('postTitle').value = post.title;
+    document.getElementById('postContent').value = post.content;
+    postImageBase64 = post.imageBase64 || '';
+    if (postImageBase64) {
+      document.getElementById('imagePreviewEl').src = postImageBase64;
+      document.getElementById('imagePreviewContainer').style.display = 'block';
+      document.getElementById('imageUploadPlaceholder').style.display = 'none';
+    } else {
+      document.getElementById('imagePreviewContainer').style.display = 'none';
+      document.getElementById('imageUploadPlaceholder').style.display = 'block';
+    }
+  } else {
+    titleEl.textContent = '發布星際貼文';
+    btnSubmit.innerHTML = '🚀 發布貼文';
+    btnDelete.style.display = 'none';
+    postImageBase64 = '';
+    document.getElementById('postTitle').value = '';
+    document.getElementById('postContent').value = '';
+    document.getElementById('imagePreviewContainer').style.display = 'none';
+    document.getElementById('imageUploadPlaceholder').style.display = 'block';
+  }
+  document.getElementById('composeAlert').innerHTML = '';
+}
+
+function previewPostImage(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    postImageBase64 = ev.target.result;
+    document.getElementById('imagePreviewEl').src = postImageBase64;
+    document.getElementById('imagePreviewContainer').style.display = 'block';
+    document.getElementById('imageUploadPlaceholder').style.display = 'none';
+  };
+  reader.readAsDataURL(file);
+}
+
+function removeImage(e) {
+  e.stopPropagation();
+  postImageBase64 = '';
+  document.getElementById('imagePreviewContainer').style.display = 'none';
+  document.getElementById('imageUploadPlaceholder').style.display = 'block';
+  document.getElementById('postImage').value = '';
+}
+
+function submitPost() {
+  const cu = getCurrentUser();
+  const title = document.getElementById('postTitle').value.trim();
+  const content = document.getElementById('postContent').value.trim();
+  if (!title || !content) return showAlert('composeAlert', '請填寫主題和內容', 'error');
+  const posts = getPosts();
+  
+  if (editingPostId) {
+    const postIdx = posts.findIndex(p => p.postId === editingPostId);
+    if (postIdx > -1) {
+      posts[postIdx].title = title;
+      posts[postIdx].content = content;
+      posts[postIdx].imageBase64 = postImageBase64;
+    }
+  } else {
+    const newPost = {
+      postId: `post_${Date.now()}_${Math.random().toString(36).substr(2,6)}`,
+      userId: cu.id,
+      nickname: cu.nickname,
+      avatar: cu.avatar,
+      title,
+      content,
+      imageBase64: postImageBase64,
+      timestamp: Date.now(),
+      likes: [],
+      comments: []
+    };
+    posts.push(newPost);
+  }
+  savePosts(posts);
+  editingPostId = null;
+  showPage('galaxy');
+}
+
+function deletePost() {
+  if (!editingPostId) return;
+  
+  showModal('確認刪除', '你確定要刪除這篇星際貼文嗎？刪除後將無法恢復。', [
+    { text: '🗑️ 確認刪除', action: 'confirmDeletePost()' },
+    { text: '取消', action: 'closeModal()', secondary: true }
+  ]);
+}
+
+function confirmDeletePost() {
+  closeModal();
+  let posts = getPosts();
+  posts = posts.filter(p => p.postId !== editingPostId);
+  savePosts(posts);
+  editingPostId = null;
+  showPage('galaxy');
+}
+
+// ─── GALAXY ───
+function renderGalaxy() {
+  const posts = getPosts().reverse();
+  const grid = document.getElementById('galaxyPostsGrid');
+  if (posts.length === 0) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
+      <div class="empty-icon">🌌</div>
+      <div class="empty-text">宇宙尚未有訊號<br>成為第一個探索者吧！</div>
+    </div>`;
+  } else {
+    grid.innerHTML = posts.map(p => renderPostCard(p)).join('');
+  }
+}
+
+// ─── POST CARD ───
+function renderPostCard(post) {
+  const cu = getCurrentUser();
+  const liked = cu && post.likes.includes(cu.id);
+  const hasImg = post.imageBase64 && post.imageBase64.length > 0;
+  return `<div class="post-card" id="card_${post.postId}">
+    <div class="post-card-header" style="cursor:pointer;" onclick="viewProfile('${post.userId}')">
+      ${avatarEl(post.avatar, post.nickname, 38)}
+      <div class="post-author-info">
+        <div class="post-author-name" style="transition: color 0.3s;" onmouseover="this.style.color='var(--neon-cyan)'" onmouseout="this.style.color='var(--text-primary)'">${escHtml(post.nickname)}</div>
+        <div class="post-author-id">@${escHtml(post.userId)}</div>
+      </div>
+      <div class="post-time">${formatTime(post.timestamp)}</div>
+    </div>
+    <div class="post-title">${escHtml(post.title)}</div>
+    <div class="post-content" id="content_${post.postId}">${escHtml(post.content)}<div class="post-content-fade"></div></div>
+    <button class="btn-expand" onclick="toggleExpand('${post.postId}')" id="expandBtn_${post.postId}">▼ 展開</button>
+    ${hasImg ? `<img src="${post.imageBase64}" class="post-image" alt="貼文圖片">` : ''}
+    <div class="post-actions">
+      <button class="action-btn ${liked ? 'liked' : ''}" onclick="toggleLike('${post.postId}')" id="likeBtn_${post.postId}">
+        <span class="action-icon">👾</span>
+        <span id="likeCount_${post.postId}">${post.likes.length}</span>
+      </button>
+      <button class="action-btn" onclick="toggleComments('${post.postId}')">
+        <span class="action-icon">💬</span>
+        <span id="commentCount_${post.postId}">${post.comments.length}</span>
+      </button>
+      ${cu && cu.id === post.userId ? `
+      <button class="action-btn" onclick="editPost('${post.postId}')">
+        <span class="action-icon">✏️</span>
+        <span>編輯</span>
+      </button>
+      ` : ''}
+    </div>
+    <div class="comments-section" id="comments_${post.postId}">
+      <div id="commentsList_${post.postId}">${renderComments(post)}</div>
+      ${renderCommentInput(post)}
+    </div>
+  </div>`;
+}
+
+function renderComments(post) {
+  if (post.comments.length === 0) {
+    return `<div style="font-size:0.78rem;color:var(--text-dim);text-align:center;padding:0.5rem;">尚無留言</div>`;
+  }
+  return post.comments.map(c => `
+    <div class="comment-item">
+      <div style="cursor:pointer;" onclick="viewProfile('${c.userId}')">
+        ${avatarEl(c.avatar, c.nickname, 28)}
+      </div>
+      <div class="comment-body">
+        <div class="comment-meta">
+          <span class="comment-author" style="cursor:pointer;" onclick="viewProfile('${c.userId}')" onmouseover="this.style.textShadow='0 0 8px var(--neon-blue)'" onmouseout="this.style.textShadow='none'">${escHtml(c.nickname)}</span>
+          <span class="comment-time">${formatTime(c.timestamp)}</span>
+        </div>
+        <div class="comment-text">${escHtml(c.text)}</div>
+      </div>
+    </div>`).join('');
+}
+
+function renderCommentInput(post) {
+  const cu = getCurrentUser();
+  if (cu) {
+    return `<div class="comment-input-area">
+      <input class="comment-input" type="text" id="commentInput_${post.postId}" placeholder="留下你的訊息...">
+      <button class="btn-comment-submit" onclick="submitComment('${post.postId}')">送出</button>
+    </div>`;
+  } else {
+    return `<div class="login-prompt">
+      <div class="login-prompt-text">想加入討論嗎？請先登入或註冊帳號</div>
+      <div class="login-prompt-btns">
+        <button class="btn-prompt" onclick="goToAuth('login')">前往登入</button>
+        <button class="btn-prompt" onclick="goToAuth('register')">立即註冊</button>
+      </div>
+    </div>`;
+  }
+}
+
+function goToAuth(tab) {
+  showPage('auth');
+  switchAuthTab(tab);
+}
+
+function toggleExpand(postId) {
+  const content = document.getElementById(`content_${postId}`);
+  const btn = document.getElementById(`expandBtn_${postId}`);
+  if (content.classList.contains('expanded')) {
+    content.classList.remove('expanded');
+    btn.textContent = '▼ 展開';
+  } else {
+    content.classList.add('expanded');
+    btn.textContent = '▲ 收起';
+  }
+}
+
+function toggleLike(postId) {
+  const cu = getCurrentUser();
+  if (!cu) {
+    showModal('尚未登入', '是否有 PETVERSE 帳號？登入後即可按讚！',
+      [{ text: '前往登入', action: "goToAuth('login')" },
+       { text: '取消', action: 'closeModal()', secondary: true }]);
+    return;
+  }
+  const posts = getPosts();
+  const post = posts.find(p => p.postId === postId);
+  if (!post) return;
+  const idx = post.likes.indexOf(cu.id);
+  if (idx === -1) post.likes.push(cu.id);
+  else post.likes.splice(idx, 1);
+  savePosts(posts);
+  const btn = document.getElementById(`likeBtn_${postId}`);
+  const count = document.getElementById(`likeCount_${postId}`);
+  const liked = post.likes.includes(cu.id);
+  btn.className = `action-btn ${liked ? 'liked' : ''}`;
+  count.textContent = post.likes.length;
+}
+
+function toggleComments(postId) {
+  const section = document.getElementById(`comments_${postId}`);
+  section.classList.toggle('open');
+}
+
+function submitComment(postId) {
+  const cu = getCurrentUser();
+  if (!cu) return;
+  const input = document.getElementById(`commentInput_${postId}`);
+  const text = input.value.trim();
+  if (!text) return;
+  const posts = getPosts();
+  const post = posts.find(p => p.postId === postId);
+  if (!post) return;
+  post.comments.push({
+    userId: cu.id,
+    nickname: cu.nickname,
+    avatar: cu.avatar,
+    text,
+    timestamp: Date.now()
+  });
+  savePosts(posts);
+  input.value = '';
+  document.getElementById(`commentsList_${postId}`).innerHTML = renderComments(post);
+  document.getElementById(`commentCount_${postId}`).textContent = post.comments.length;
+}
+
+// ─── MODAL ───
+function showModal(title, text, actions) {
+  document.getElementById('modalTitle').textContent = title;
+  document.getElementById('modalText').textContent = text;
+  const actEl = document.getElementById('modalActions');
+  actEl.innerHTML = actions.map(a =>
+    `<button class="${a.secondary ? 'btn-secondary' : 'btn-primary'}" onclick="${a.action}">${a.text}</button>`
+  ).join('');
+  document.getElementById('modal').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('modal').classList.remove('open');
+}
+
+document.getElementById('modal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+// ─── HTML ESCAPE ───
+function escHtml(str) {
+  return String(str)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
+}
+
+// ─── INIT ───
+(function init() {
+  const cu = getCurrentUser();
+  updateNavAvatar();
+  if (cu) {
+    showPage('galaxy');
+  } else {
+    showPage('auth');
+  }
+})();
+</script>
+</body>
+</html>
